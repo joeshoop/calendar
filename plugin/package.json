@@ -1,0 +1,13 @@
+{
+  "name": "calendar-updater",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "@figma/plugin-typings": "^1.100.0"
+  }
+}

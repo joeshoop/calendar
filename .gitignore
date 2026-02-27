@@ -1,0 +1,3 @@
+node_modules/
+.claude/
+plugin/code.js

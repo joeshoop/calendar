@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+      padding: 16px;
+      color: #333;
+      background: #fff;
+    }
+    h2 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .field {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    label {
+      font-size: 12px;
+      font-weight: 500;
+      min-width: 48px;
+    }
+    label.full-width {
+      min-width: auto;
+      margin-bottom: 4px;
+    }
+    input[type="number"], input[type="text"] {
+      width: 80px;
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #18a0fb;
+      box-shadow: 0 0 0 2px rgba(24, 160, 251, 0.2);
+    }
+    .location-info {
+      font-size: 10px;
+      color: #999;
+      margin-left: 4px;
+    }
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+    }
+    .checkbox-group {
+      margin-bottom: 12px;
+    }
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+    }
+    .checkbox-row input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: #18a0fb;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .checkbox-row label {
+      font-size: 12px;
+      font-weight: 400;
+      min-width: auto;
+      cursor: pointer;
+      user-select: none;
+    }
+    .birthday-field {
+      margin-bottom: 12px;
+    }
+    .birthday-field textarea {
+      width: 100%;
+      height: 60px;
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: 'SF Mono', Monaco, Menlo, monospace;
+      line-height: 1.5;
+      resize: vertical;
+    }
+    .birthday-hint {
+      font-size: 10px;
+      color: #999;
+      margin-top: 2px;
+    }
+    button {
+      width: 100%;
+      padding: 8px 16px;
+      background: #18a0fb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      margin-top: 4px;
+    }
+    button:hover { background: #0d8de6; }
+    button:active { background: #0a7dd4; }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    #status {
+      margin-top: 12px;
+      font-size: 11px;
+      color: #666;
+      min-height: 32px;
+      line-height: 1.4;
+    }
+    #status.error { color: #e03e3e; }
+    #status.done { color: #1ea672; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h2>Calendar Updater</h2>
+  <div class="field">
+    <label>Year</label>
+    <input type="number" id="year" min="2000" max="2099" step="1">
+  </div>
+  <div class="field">
+    <label>Zip Code</label>
+    <input type="text" id="zip" maxlength="5" placeholder="98107">
+    <span class="location-info" id="location-info"></span>
+  </div>
+
+  <div class="section-label">Events</div>
+  <div class="checkbox-group">
+    <div class="checkbox-row">
+      <input type="checkbox" id="federalHolidays" checked>
+      <label for="federalHolidays">Federal Holidays</label>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="observances" checked>
+      <label for="observances">Observances</label>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="sunriseSunset" checked>
+      <label for="sunriseSunset">Sunrise & Sunset</label>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="fullMoons" checked>
+      <label for="fullMoons">Full Moons</label>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="equinoxesSolstices" checked>
+      <label for="equinoxesSolstices">Equinoxes & Solstices</label>
+    </div>
+  </div>
+
+  <div class="birthday-field">
+    <label class="full-width">Birthdays</label>
+    <textarea id="birthdayText">Jan 19 1946 Dolly Parton
+Oct 29 1942 Bob Ross</textarea>
+    <div class="birthday-hint">Format: Mon DD [YYYY] Name — include year to show age</div>
+  </div>
+
+  <button id="btn" onclick="run()">Update Calendar</button>
+  <div id="status"></div>
+
+  <script>
+    const yearInput = document.getElementById('year');
+    const zipInput = document.getElementById('zip');
+    const locationInfo = document.getElementById('location-info');
+    const birthdayInput = document.getElementById('birthdayText');
+    const btn = document.getElementById('btn');
+    const status = document.getElementById('status');
+
+    const checkboxIds = ['federalHolidays', 'observances', 'sunriseSunset', 'fullMoons', 'equinoxesSolstices'];
+
+    // Default to current year and Seattle zip
+    yearInput.value = new Date().getFullYear();
+    zipInput.value = '98107';
+
+    // Zip code to lat/lng lookup using free API
+    async function lookupZip(zip) {
+      try {
+        const resp = await fetch(`https://api.zippopotam.us/us/${zip}`);
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        const place = data.places[0];
+        locationInfo.textContent = place['place name'] + ', ' + place['state abbreviation'];
+        return {
+          lat: parseFloat(place.latitude),
+          lng: parseFloat(place.longitude),
+          name: place['place name'] + ', ' + place['state abbreviation'],
+        };
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Preview location on zip change
+    let lookupTimeout;
+    zipInput.addEventListener('input', () => {
+      clearTimeout(lookupTimeout);
+      locationInfo.textContent = '';
+      if (zipInput.value.length === 5) {
+        lookupTimeout = setTimeout(async () => {
+          const result = await lookupZip(zipInput.value);
+          if (!result) {
+            locationInfo.textContent = 'Not found';
+          }
+        }, 300);
+      }
+    });
+
+    // Trigger initial lookup
+    lookupZip('98107');
+
+    async function run() {
+      const year = parseInt(yearInput.value);
+      if (isNaN(year) || year < 2000 || year > 2099) {
+        status.textContent = 'Please enter a year between 2000 and 2099.';
+        status.className = 'error';
+        return;
+      }
+
+      const zip = zipInput.value.trim();
+      let lat = 47.67, lng = -122.38; // Default: Seattle
+
+      if (zip.length === 5) {
+        status.textContent = 'Looking up location...';
+        const result = await lookupZip(zip);
+        if (result) {
+          lat = result.lat;
+          lng = result.lng;
+        } else {
+          status.textContent = `Zip "${zip}" not found. Using default (Seattle).`;
+        }
+      }
+
+      btn.disabled = true;
+      status.className = '';
+      status.textContent = 'Starting...';
+      parent.postMessage({ pluginMessage: {
+        type: 'update',
+        year,
+        lat,
+        lng,
+        federalHolidays: document.getElementById('federalHolidays').checked,
+        observances: document.getElementById('observances').checked,
+        sunriseSunset: document.getElementById('sunriseSunset').checked,
+        fullMoons: document.getElementById('fullMoons').checked,
+        equinoxesSolstices: document.getElementById('equinoxesSolstices').checked,
+        birthdayText: birthdayInput.value,
+      } }, '*');
+    }
+
+    window.onmessage = (event) => {
+      const msg = event.data.pluginMessage;
+      if (!msg) return;
+      if (msg.type === 'loadConfig') {
+        const c = msg.config;
+        if (c) {
+          for (const id of checkboxIds) {
+            if (c[id] !== undefined) {
+              document.getElementById(id).checked = c[id];
+            }
+          }
+          if (c.birthdayText) {
+            birthdayInput.value = c.birthdayText;
+          }
+        }
+      } else if (msg.type === 'progress') {
+        status.className = '';
+        status.textContent = msg.message;
+      } else if (msg.type === 'done') {
+        status.className = 'done';
+        status.textContent = msg.message || 'Done! Calendar updated.';
+        btn.disabled = false;
+      } else if (msg.type === 'error') {
+        status.className = 'error';
+        status.textContent = msg.message;
+        btn.disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>
