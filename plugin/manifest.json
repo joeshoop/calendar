@@ -1,9 +1,12 @@
 {
   "name": "Calendar Updater",
-  "id": "calendar-updater-local",
+  "id": "1609265485869894597",
   "api": "1.0.0",
   "main": "code.js",
   "ui": "ui.html",
   "editorType": ["figma"],
-  "documentAccess": "dynamic-page"
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["https://api.zippopotam.us"]
+  }
 }
